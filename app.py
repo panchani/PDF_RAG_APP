@@ -16,12 +16,31 @@ st.title("Groq Chatbot")
 
 # store chat history
 if "messages" not in st.session_state:
-    st.session_state.messages = []
+    st.session_state.messages = [{
+            "role": "system",
+            "content": """
+You are a restricted assistant.
+
+You are ONLY allowed to answer questions related to:
+- Information Technology (IT)
+- Corporate sector
+- Programming
+- Software development
+- Technical topics
+- Professional workplace topics
+- Greetings (hello, hi, good morning etc.)
+
+If the user asks anything outside these topics (politics, history, entertainment, personal advice, etc.), you MUST respond with exactly:
+
+"Sorry, I'm not allowed to answer that."
+"""
+        }]
 
 # display old messages
 for m in st.session_state.messages:
-    with st.chat_message(m["role"]):
-        st.markdown(m["content"])
+    if m["role"]!="system":
+        with st.chat_message(m["role"]):
+            st.markdown(m["content"])
 
 # user input
 prompt = st.chat_input("Ask something")
@@ -34,7 +53,9 @@ if prompt:
 
     try:
         res = client.chat.completions.create(
-            model="openai/gpt-oss-20b",
+            #model="openai/gpt-oss-20b",
+            #model="groq/compound",
+            model="llama-3.1-8b-instant",
             messages=st.session_state.messages
         )
         reply = res.choices[0].message.content
