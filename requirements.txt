@@ -1,3 +1,8 @@
 streamlit
 python-dotenv
-groq
+PyPDF2
+langchain
+langchain-community
+langchain-text-splitters
+huggingface-hub
+sentence-transformers
