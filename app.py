@@ -2,10 +2,14 @@ import streamlit as st
 import os
 from dotenv import load_dotenv
 from groq import Groq
-from pypdf import PdfReader
+import tempfile
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import FAISS
+from langchain_huggingface import HuggingFaceEmbeddings
 
 load_dotenv()
-
+vector_db=None
 api_key = os.getenv("GROK_API_KEY")
 
 if not api_key:
@@ -18,35 +22,31 @@ st.title("PDF Aware Groq Chatbot")
 
 #PDF Upload
 uploaded_file = st.file_uploader("Upload a PDF", type="pdf")
-
-def extract_pdf_text(file):
-    reader = PdfReader(file)
-    text = ""
-
-    for page in reader.pages:
-        page_text = page.extract_text()
-        if page_text:
-            text += page_text + "\n"
-
-    return text
-
-# detect new pdf upload
 if uploaded_file is not None:
 
-    if "current_pdf" not in st.session_state or \
-       st.session_state.current_pdf != uploaded_file.name:
+    # create temporary file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+        tmp_file.write(uploaded_file.read())
+        temp_path = tmp_file.name
 
-        st.session_state.current_pdf = uploaded_file.name
-        st.session_state.pdf_context = extract_pdf_text(uploaded_file)
+    # now pass the path to PyPDFLoader
+    loader = PyPDFLoader(temp_path)
+    docs = loader.load()
+       
+    # Split into chunks
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=4000,
+        chunk_overlap=50
+    )
 
-        # reset chat history
-        st.session_state.messages = []
+    chunks = text_splitter.split_documents(docs)
 
-        st.success("New PDF loaded. Chat reset.")
+    # create embeddings
+    embeddings = HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2"
+    )
 
-# show current pdf
-if "current_pdf" in st.session_state:
-    st.info(f"Current PDF: {st.session_state.current_pdf}")
+    vector_db = FAISS.from_documents(chunks, embeddings)
 
 # store chat history
 if "messages" not in st.session_state:
@@ -83,14 +83,18 @@ for m in st.session_state.messages:
 # user input
 prompt = st.chat_input("Ask something")
 
-if prompt:
+if prompt and vector_db:
+
     # st.session_state.messages.append({"role": "user", "content": prompt})
 
     with st.chat_message("user"):
         st.markdown(prompt)
    
     # build user prompt with context
-    context = st.session_state.get("pdf_context", "")
+    context = vector_db.similarity_search(
+    prompt,
+    k=3
+    )
 
 
     user_prompt = f"""
@@ -103,7 +107,31 @@ if prompt:
     {prompt}
     """
     mes = st.session_state.messages + [{"role": "user", "content": user_prompt}]
-    st.write(st.session_state)
+    try:
+        res = client.chat.completions.create(
+            #model="openai/gpt-oss-20b",
+            #model="groq/compound",
+            model="llama-3.1-8b-instant",
+            messages=mes
+        )
+        reply = res.choices[0].message.content
+    except Exception as e:
+        reply = f"Error: {e}"
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.session_state.messages.append({"role": "assistant", "content": reply})
+
+    with st.chat_message("assistant"):
+        st.markdown(reply) 
+elif prompt:
+    with st.chat_message("user"):
+        st.markdown(prompt)
+   
+    user_prompt = f"""
+    answer the question considering system restrictions.
+    Question:
+    {prompt}
+    """
+    mes = st.session_state.messages + [{"role": "user", "content": user_prompt}]
     try:
         res = client.chat.completions.create(
             #model="openai/gpt-oss-20b",
