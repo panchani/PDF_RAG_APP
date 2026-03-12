@@ -2,7 +2,9 @@ import streamlit as st
 import os
 import tempfile
 import functinality as ft
-vector_db=None
+
+if "vector_db" not in st.session_state:
+    st.session_state.vector_db = None
 
 
 st.title("PDF Aware Groq Chatbot")
@@ -11,7 +13,7 @@ st.title("PDF Aware Groq Chatbot")
 uploaded_file = st.file_uploader("Upload a PDF", type="pdf")
 if uploaded_file is not None:
 
-    vector_db=ft.return_vector_db(uploaded_file)
+    st.session_state.vector_db = ft.return_vector_db(uploaded_file)
 
    
 # store chat history
@@ -27,7 +29,7 @@ for m in st.session_state.messages:
 # user input
 prompt = st.chat_input("Ask something")
 
-if prompt and vector_db:
+if prompt and st.session_state.vector_db:
 
     # st.session_state.messages.append({"role": "user", "content": prompt})
 
@@ -35,7 +37,7 @@ if prompt and vector_db:
         st.markdown(prompt)
    
     # build user prompt with context
-    context = ft.retrieve_context(vector_db,prompt)
+    context = ft.retrieve_context(st.session_state.vector_db,prompt)
 
 
     user_prompt = ft.get_user_prompt_rag(context, prompt)
