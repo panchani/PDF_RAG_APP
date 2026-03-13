@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PDF RAG Chatbot</title>
+
+    <style>
+        body{
+            font-family: Arial;
+            width: 700px;
+            margin: auto;
+            margin-top: 40px;
+        }
+
+        #chatbox{
+            border:1px solid #ccc;
+            height:400px;
+            overflow-y:scroll;
+            padding:10px;
+            margin-bottom:10px;
+        }
+
+        .user{
+            color:blue;
+        }
+
+        .assistant{
+            color:green;
+        }
+    </style>
+
+</head>
+
+
+<body>
+
+<h2>PDF Aware Groq Chatbot</h2>
+
+<!-- Ping API -->
+<button onclick="pingAPI()">Ping API</button>
+<p id="ping_result"></p>
+
+
+<hr>
+
+
+<!-- Upload PDF -->
+<h3>Upload PDF</h3>
+
+<input type="file" id="pdf_file">
+<button onclick="uploadPDF()">Upload</button>
+
+<p id="upload_status"></p>
+
+
+<hr>
+
+
+<!-- Chat Window -->
+<div id="chatbox"></div>
+
+
+<input type="text" id="user_input" placeholder="Ask something..." style="width:80%">
+<button onclick="sendMessage()">Send</button>
+
+
+<script>
+
+const API_URL = "http://127.0.0.1:5000"
+
+
+// -----------------------
+// Ping API
+// -----------------------
+async function pingAPI(){
+
+    let res = await fetch(API_URL + "/ping")
+    let data = await res.json()
+
+    document.getElementById("ping_result").innerText =
+        data.message
+}
+
+
+
+// -----------------------
+// Upload PDF
+// -----------------------
+async function uploadPDF(){
+
+    const file = document.getElementById("pdf_file").files[0]
+
+    if(!file){
+        alert("Please select a PDF")
+        return
+    }
+
+    const formData = new FormData()
+
+    formData.append("file", file)
+
+    const res = await fetch(API_URL + "/upload_pdf",{
+        method:"POST",
+        body:formData
+    })
+
+    const data = await res.json()
+
+    document.getElementById("upload_status").innerText =
+        data.message
+}
+
+
+
+// -----------------------
+// Send Message
+// -----------------------
+async function sendMessage(){
+
+    const input = document.getElementById("user_input")
+
+    const prompt = input.value
+
+    if(prompt===""){
+        return
+    }
+
+    addMessage(prompt,"user")
+
+    input.value = ""
+
+
+    const res = await fetch(API_URL + "/chat",{
+        method:"POST",
+        headers:{
+            "Content-Type":"application/json"
+        },
+        body:JSON.stringify({
+            prompt:prompt
+        })
+    })
+
+
+    const data = await res.json()
+
+    addMessage(data.reply,"assistant")
+}
+
+
+
+// -----------------------
+// Add Message To Chat
+// -----------------------
+function addMessage(text,role){
+
+    const chatbox = document.getElementById("chatbox")
+
+    const div = document.createElement("div")
+
+    div.className = role
+
+    div.innerHTML = "<b>" + role + ":</b> " + text
+
+    chatbox.appendChild(div)
+
+    chatbox.scrollTop = chatbox.scrollHeight
+}
+
+
+</script>
+
+</body>
+</html>

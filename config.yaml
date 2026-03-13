@@ -1,0 +1,10 @@
+embedding:
+  model_name: "sentence-transformers/all-MiniLM-L6-v2"
+  cache_folder: "./models"
+
+text_splitter:
+  chunk_size: 4000
+  chunk_overlap: 50
+
+retriever:
+  k: 3
