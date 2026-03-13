@@ -1,7 +1,7 @@
 import streamlit as st
 import os
 import tempfile
-import functinality as ft
+import functionality as ft
 vector_db=None
 
 
@@ -37,7 +37,7 @@ if prompt and vector_db:
     # build user prompt with context
     context = ft.retrieve_context(vector_db,prompt)
 
-
+    st.markdown(context)
     user_prompt = ft.get_user_prompt_rag(context, prompt)
     mes = st.session_state.messages + [{"role": "user", "content": user_prompt}]
     try:

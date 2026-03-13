@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-import functinality as ft
+import functionality as ft
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -75,7 +75,7 @@ def chat():
         try:
             reply = ft.llm_inference(mes)
         except Exception as e:
-            reply = f"Error: {e}"
+            reply = f"Error: {e}" 
 
 
     # Save history
@@ -92,4 +92,5 @@ def chat():
 # Run server
 # -------------------------
 if __name__ == "__main__":
-    app.run(debug=True)
+    # app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000)

@@ -6,7 +6,18 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
+import yaml
 load_dotenv()
+
+
+with open("config.yaml", "r") as file:
+    config = yaml.safe_load(file)
+
+
+embedding_model = HuggingFaceEmbeddings(
+    model_name=config["embedding"]["model_name"],
+    cache_folder=config["embedding"]["cache_folder"]
+)
 
 system_prompt=[{
             "role": "system",
@@ -43,20 +54,16 @@ def create_chunks(uploaded_file):
        
     # Split into chunks
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=4000,
-        chunk_overlap=50
+        chunk_size=config["text_splitter"]["chunk_size"],
+        chunk_overlap=config["text_splitter"]["chunk_overlap"]
     )
 
     chunks = text_splitter.split_documents(docs)
 
     return chunks
 
-def create_embeddings():
-    # create embeddings
-    embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2"
-    )
-    return embeddings
+def get_embedding_model():
+    return embedding_model
 
 def create_vector_db(chunks, embeddings):
     vector_db = FAISS.from_documents(chunks, embeddings)
@@ -64,15 +71,14 @@ def create_vector_db(chunks, embeddings):
 
 def return_vector_db(uploaded_file):
     chunks=create_chunks(uploaded_file)
-    embeddings=create_embeddings()
+    embeddings=get_embedding_model()
     vector_db=create_vector_db(chunks, embeddings)
     return vector_db
 
 def retrieve_context(vector_db,prompt):
     context=vector_db.similarity_search(
     prompt,
-    k=3
-    )
+    k=config["retriever"]["k"]    )
     return context
 
 def get_user_prompt_without_rag(prompt):
@@ -95,7 +101,7 @@ def get_user_prompt_rag(context, prompt):
     """
     return user_prompt
 
-api_key = os.getenv("GROK_API_KEY")
+api_key = os.getenv("GROQ_API_KEY")
 
 client = Groq(api_key=api_key)
 
